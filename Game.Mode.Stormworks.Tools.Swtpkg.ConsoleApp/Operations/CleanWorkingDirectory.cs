@@ -1,0 +1,53 @@
+﻿using Game.Mode.Stormworks.Tools.Swtpkg.Application.Options;
+using Game.Mode.Stormworks.Tools.Swtpkg.Application.Validators;
+using Lexicom.ConsoleApp.Amenities;
+using Lexicom.ConsoleApp.Tui;
+using Microsoft.Extensions.Options;
+
+namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations;
+[TuiTitle("Pass 1: Clean working directory")]
+public class CleanWorkingDirectory : ITuiOperation
+{
+    private readonly IOptions<FilePathOptions> _FilePathOptions;
+
+    public CleanWorkingDirectory(IOptions<FilePathOptions> filePathOptions)
+    {
+        _FilePathOptions = filePathOptions;
+    }
+
+    public Task ExecuteAsync()
+    {
+        FilePathOptions filePathOptions = _FilePathOptions.Value;
+        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
+
+        var workingDirectory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
+
+        Console.WriteLine($"Everything inside the working directory '{filePathOptions.WorkingDirectoryPath}' will be deleted.");
+        Consolex
+            .BinaryQuestion()
+            .Ask($"Are you sure you want to continue?");
+
+        return Task.CompletedTask;
+    }
+
+    public static long RecursiveSizeInBytes(DirectoryInfo directoryInfo)
+    {
+        ArgumentNullException.ThrowIfNull(directoryInfo);
+
+        long size = 0;
+
+        FileInfo[] files = directoryInfo.GetFiles();
+        foreach (FileInfo file in files)
+        {
+            size += file.Length;
+        }
+
+        DirectoryInfo[] directories = directoryInfo.GetDirectories();
+        foreach (DirectoryInfo directory in directories)
+        {
+            size += RecursiveSizeInBytes(directory);
+        }
+
+        return size;
+    }
+}

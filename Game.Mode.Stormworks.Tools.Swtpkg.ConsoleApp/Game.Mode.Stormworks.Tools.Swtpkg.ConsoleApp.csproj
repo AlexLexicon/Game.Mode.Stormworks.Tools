@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lexicom.ConsoleApp.Amenities" Version="7.0.37" />
+    <PackageReference Include="Lexicom.ConsoleApp.Tui" Version="7.0.37" />
+    <PackageReference Include="Lexicom.Logging.For.ConsoleApp" Version="7.0.37" />
+    <PackageReference Include="Lexicom.Validation.For.ConsoleApp" Version="7.0.37" />
+    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Game.Mode.Stormworks.Tools.Swtpkg.Application\Game.Mode.Stormworks.Tools.Swtpkg.Application.csproj" />
+  </ItemGroup>
+
+</Project>

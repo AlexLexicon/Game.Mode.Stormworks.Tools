@@ -1,0 +1,27 @@
+﻿namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Models;
+public enum PixelFormat
+{
+    DontCare,
+    Undefined,
+    Max,
+    Indexed,
+    Gdi,
+    Format16bppRgb555,
+    Format16bppRgb565,
+    Format24bppRgb,
+    Format32bppRgb,
+    Format1bppIndexed,
+    Format4bppIndexed,
+    Format8bppIndexed,
+    Alpha,
+    Format16bppArgb1555,
+    PAlpha,
+    Format32bppPArgb,
+    Extended,
+    Format16bppGrayScale,
+    Format48bppRgb,
+    Format64bppPArgb,
+    Canonical,
+    Format32bppArgb,
+    Format64bppArgb,
+}
