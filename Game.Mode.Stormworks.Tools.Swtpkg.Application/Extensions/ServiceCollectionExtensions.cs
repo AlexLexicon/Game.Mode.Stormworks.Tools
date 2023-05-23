@@ -23,6 +23,20 @@ public static class ServiceCollectionExtensions
             .BindConfiguration()
             .Validate();
 
-        services.AddScoped<IAddonLocationImageService, AddonLocationImageService>();
+        services
+            .AddOptions<PackageSettingsOptions>()
+            .BindConfiguration()
+            .Validate();
+
+        services
+            .AddOptions<PackagingOptions>()
+            .BindConfiguration()
+            .Validate();
+
+        services.AddScoped<IAddonImageService, AddonImageService>();
+        services.AddScoped<IPackageDataService, PackageDataService>();
+        services.AddScoped<IAddonService, AddonService>();
+        services.AddScoped<IAddonService, AddonService>();
+        services.AddScoped<IGameService, GameService>();
     }
 }

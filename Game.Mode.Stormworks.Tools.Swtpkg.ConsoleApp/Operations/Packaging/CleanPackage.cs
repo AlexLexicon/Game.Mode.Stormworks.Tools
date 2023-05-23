@@ -4,13 +4,15 @@ using Lexicom.ConsoleApp.Amenities;
 using Lexicom.ConsoleApp.Tui;
 using Microsoft.Extensions.Options;
 
-namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations;
-[TuiTitle("Pass 1: Clean working directory")]
-public class CleanWorkingDirectory : ITuiOperation
+namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations.Packaging;
+[TuiPriority(PackagingPriority.CleanPackage)]
+[TuiPage("Packaging")]
+[TuiTitle("Clean Package")]
+public class CleanPackage : ITuiOperation
 {
     private readonly IOptions<FilePathOptions> _filePathOptions;
 
-    public CleanWorkingDirectory(IOptions<FilePathOptions> filePathOptions)
+    public CleanPackage(IOptions<FilePathOptions> filePathOptions)
     {
         _filePathOptions = filePathOptions;
     }
