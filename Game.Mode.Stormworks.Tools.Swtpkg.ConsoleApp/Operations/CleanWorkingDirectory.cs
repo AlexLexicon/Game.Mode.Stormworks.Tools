@@ -8,16 +8,16 @@ namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations;
 [TuiTitle("Pass 1: Clean working directory")]
 public class CleanWorkingDirectory : ITuiOperation
 {
-    private readonly IOptions<FilePathOptions> _FilePathOptions;
+    private readonly IOptions<FilePathOptions> _filePathOptions;
 
     public CleanWorkingDirectory(IOptions<FilePathOptions> filePathOptions)
     {
-        _FilePathOptions = filePathOptions;
+        _filePathOptions = filePathOptions;
     }
 
     public Task ExecuteAsync()
     {
-        FilePathOptions filePathOptions = _FilePathOptions.Value;
+        FilePathOptions filePathOptions = _filePathOptions.Value;
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
 
         var workingDirectory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
