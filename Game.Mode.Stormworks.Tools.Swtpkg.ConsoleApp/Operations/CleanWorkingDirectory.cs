@@ -13,7 +13,7 @@ public class CleanWorkingDirectory : ITuiOperation
     public CleanWorkingDirectory(IOptions<FilePathOptions> filePathOptions)
     {
         _FilePathOptions = filePathOptions;
-    }SS
+    }
 
     public Task ExecuteAsync()
     {
