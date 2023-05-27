@@ -6,7 +6,6 @@ using Lexicom.ConsoleApp.DependencyInjection;
 using Lexicom.ConsoleApp.Tui.Extensions;
 using Lexicom.Logging.ConsoleApp.Extensions;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 /*
  * Control the working folder
@@ -64,16 +63,6 @@ builder.Lexicom(options =>
     options.AddTui<Program>();
     options.AddLogging();
 });
-
-builder.Services.AddLogging(options =>
-{
-    options.AddConsole(options =>
-    {
-
-    });
-});
-
-
 
 builder.Services.AddSwtpkgApplication();
 

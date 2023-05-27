@@ -1,4 +1,6 @@
-﻿using Lexicom.ConsoleApp.Tui;
+﻿using Game.Mode.Stormworks.Tools.Swtpkg.Application.Models;
+using Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
+using Lexicom.ConsoleApp.Tui;
 
 namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations.Packaging;
 [TuiPriority(PackagingPriority.CopyGameFiles)]
@@ -6,8 +8,23 @@ namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations.Packaging;
 [TuiTitle("Copy game files")]
 public class CopyGameFiles : ITuiOperation
 {
-    public Task ExecuteAsync()
+    private readonly IAddonService _addonService;
+    private readonly IGameService _gameService;
+
+    public CopyGameFiles(
+        IAddonService addonService, 
+        IGameService gameService)
     {
-        throw new NotImplementedException();
+        _addonService = addonService;
+        _gameService = gameService;
+    }
+
+    public async Task ExecuteAsync()
+    {
+        IReadOnlyList<AddonXml> addons = await _addonService.GetAddonsAsync();
+
+        var tileFileNames = addons.Select(a => a.TileFileName);
+
+        await _gameService.CopyTilesXmlToWorkingDirectoryAsync(tileFileNames);
     }
 }

@@ -14,13 +14,16 @@ public class AddonService : IAddonService
 {
     private readonly ILogger<AddonService> _logger;
     private readonly IOptions<FilePathOptions> _filePathOptions;
+    private readonly IOptions<PackagingOptions> _packagingOptions;
 
     public AddonService(
         ILogger<AddonService> logger,
-        IOptions<FilePathOptions> filePathOptions)
+        IOptions<FilePathOptions> filePathOptions,
+        IOptions<PackagingOptions> packagingOptions)
     {
-        _logger = logger;   
+        _logger = logger;
         _filePathOptions = filePathOptions;
+        _packagingOptions = packagingOptions;
     }
 
     public Task CopyToWorkingDirectoryAsync()
@@ -77,5 +80,40 @@ public class AddonService : IAddonService
 
             DeepCloneDirectory(subDirectory.FullName, targetSubDirectoryPath);
         }
+    }
+
+    public async Task<IReadOnlyList<AddonXml>> GetAddonsAsync()
+    {
+        FilePathOptions filePathOptions = _filePathOptions.Value;
+        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
+
+        var addonFiles = GetAddonFiles(filePathOptions.WorkingDirectoryPath);
+
+        return null;
+    }
+
+    private IReadOnlyList<FileInfo> GetAddonFiles(string directory, List<FileInfo>? addonXmlFiles = null)
+    {
+        PackagingOptions packagingOptions = _packagingOptions.Value;
+        PackagingOptionsValidator.ThrowIfNull(packagingOptions.AddonXmlFileName);
+
+        addonXmlFiles ??= new List<FileInfo>();
+
+        var directoryInfo = new DirectoryInfo(directory);
+        FileInfo[] files = directoryInfo.GetFiles();
+        foreach (FileInfo file in files)
+        {
+            if (file.Name == packagingOptions.AddonXmlFileName)
+            {
+                addonXmlFiles.Add(file);
+            }
+        }
+
+        foreach (DirectoryInfo subDirectory in directoryInfo.GetDirectories())
+        {
+            GetAddonFiles(subDirectory.FullName, addonXmlFiles);
+        }
+
+        return addonXmlFiles;
     }
 }

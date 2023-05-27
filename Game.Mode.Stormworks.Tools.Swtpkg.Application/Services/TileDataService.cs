@@ -3,7 +3,6 @@ using Game.Mode.Stormworks.Tools.Swtpkg.Application.Options;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Validators;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
 
 namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface ITileDataService
@@ -52,35 +51,36 @@ public class TileDataService : ITileDataService
     }
     private Task CreateCoreDataAsync(TileXml tile, AddonXml addon)
     {
-        PackageSettingsOptions packageSettingsOptions = _packageSettingsOptions.Value;
-        PackageSettingsOptionsValidator.ThrowIfNull(packageSettingsOptions.Version);
+        throw new NotImplementedException();
+        //PackageSettingsOptions packageSettingsOptions = _packageSettingsOptions.Value;
+        //PackageSettingsOptionsValidator.ThrowIfNull(packageSettingsOptions.Version);
 
-        PackagingOptions packagingOptions = _packagingOptions.Value;
-        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SourceByName);
+        //PackagingOptions packagingOptions = _packagingOptions.Value;
+        //PackagingOptionsValidator.ThrowIfNull(packagingOptions.SourceByName);
 
-        _logger.LogInformation("Retrieving the current Utc time.");
-        //todo use ITimeProvider
-        DateTimeOffset createdDateTimeUtc = DateTimeOffset.UtcNow;
+        //_logger.LogInformation("Retrieving the current Utc time.");
+        ////todo use ITimeProvider
+        //DateTimeOffset createdDateTimeUtc = DateTimeOffset.UtcNow;
 
-        _logger.LogInformation("Creating the core data.");
-        var coreData = new TileCoreData
-        {
+        //_logger.LogInformation("Creating the core data.");
+        //var coreData = new TileCoreData
+        //{
 
-        };
+        //};
 
-        _logger.LogInformation("Serilazing the core data.");
-        string fileText = JsonSerializer.Serialize(coreData, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-        });
+        //_logger.LogInformation("Serilazing the core data.");
+        //string fileText = JsonSerializer.Serialize(coreData, new JsonSerializerOptions
+        //{
+        //    WriteIndented = true,
+        //});
 
-        _logger.LogInformation("Getting the file path.");
-        string filePath = GetFilePath();
+        //_logger.LogInformation("Getting the file path.");
+        //string filePath = GetFilePath();
 
-        _logger.LogInformation("Writing the core data to the file '{filePath}'.", filePath);
-        await File.WriteAllTextAsync(filePath, fileText);
+        //_logger.LogInformation("Writing the core data to the file '{filePath}'.", filePath);
+        //await File.WriteAllTextAsync(filePath, fileText);
 
-        return coreData;
+        //return coreData;
     }
 
     public Task CreateWorkbenchDataAsync()
