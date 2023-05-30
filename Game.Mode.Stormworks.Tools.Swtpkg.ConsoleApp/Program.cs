@@ -4,6 +4,8 @@ using Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Factories;
 using Lexicom.AspNetCore.Controllers.Extensions;
 using Lexicom.ConsoleApp.DependencyInjection;
 using Lexicom.ConsoleApp.Tui.Extensions;
+using Lexicom.DependencyInjection.Primitives.Extensions;
+using Lexicom.DependencyInjection.Primitives.For.ConsoleApp.Extensions;
 using Lexicom.Logging.ConsoleApp.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -62,6 +64,11 @@ builder.Lexicom(options =>
 {
     options.AddTui<Program>();
     options.AddLogging();
+    options.AddPrimitives(options =>
+    {
+        options.AddTimeProvider();
+        options.AddGuidProvider();
+    });
 });
 
 builder.Services.AddSwtpkgApplication();

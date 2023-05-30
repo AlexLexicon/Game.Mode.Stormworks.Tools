@@ -38,5 +38,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAddonService, AddonService>();
         services.AddScoped<IAddonService, AddonService>();
         services.AddScoped<IGameService, GameService>();
+        services.AddScoped<ITileDataService, TileDataService>();
     }
 }

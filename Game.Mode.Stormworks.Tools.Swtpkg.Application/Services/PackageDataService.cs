@@ -1,6 +1,7 @@
 ﻿using Game.Mode.Stormworks.Tools.Swtpkg.Application.Models;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Options;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Validators;
+using Lexicom.DependencyInjection.Primitives;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
@@ -18,17 +19,20 @@ public class PackageDataService : IPackageDataService
     private readonly IOptions<FilePathOptions> _filePathOptions;
     private readonly IOptions<PackageSettingsOptions> _packageSettingsOptions;
     private readonly IOptions<PackagingOptions> _packagingOptions;
+    private readonly ITimeProvider _timeProvider;
 
     public PackageDataService(
         ILogger<PackageDataService> logger,
         IOptions<FilePathOptions> filePathOptions,
         IOptions<PackageSettingsOptions> packageSettingsOptions,
-        IOptions<PackagingOptions> packagingOptions)
+        IOptions<PackagingOptions> packagingOptions,
+        ITimeProvider timeProvider)
     {
         _logger = logger;
         _filePathOptions = filePathOptions;
         _packageSettingsOptions = packageSettingsOptions;
         _packagingOptions = packagingOptions;
+        _timeProvider = timeProvider;
     }
 
     public async Task<PackageMetaData> CreateMetaDataAsync()
@@ -41,7 +45,7 @@ public class PackageDataService : IPackageDataService
 
         _logger.LogInformation("Retrieving the current Utc time.");
         //todo use ITimeProvider
-        DateTimeOffset createdDateTimeUtc = DateTimeOffset.UtcNow;
+        DateTimeOffset createdDateTimeUtc = _timeProvider.UtcNow;
 
         _logger.LogInformation("Creating the metadata.");
         var metaData = new PackageMetaData

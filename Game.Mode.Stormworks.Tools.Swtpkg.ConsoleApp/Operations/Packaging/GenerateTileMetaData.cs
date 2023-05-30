@@ -1,4 +1,5 @@
-﻿using Lexicom.ConsoleApp.Tui;
+﻿using Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
+using Lexicom.ConsoleApp.Tui;
 
 namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations.Packaging;
 [TuiPriority(PackagingPriority.GenerateTileMetaData)]
@@ -6,8 +7,15 @@ namespace Game.Mode.Stormworks.Tools.Swtpkg.ConsoleApp.Operations.Packaging;
 [TuiTitle("Generate tile meta data (.meta.data.json)")]
 public class GenerateTileMetadata : ITuiOperation
 {
-    public Task ExecuteAsync()
+    private readonly ITileDataService _tileDataService;
+
+    public GenerateTileMetadata(ITileDataService tileDataService)
     {
-        throw new NotImplementedException();
+        _tileDataService = tileDataService;
+    }
+
+    public async Task ExecuteAsync()
+    {
+        await _tileDataService.CreateMetaDataAsync();
     }
 }

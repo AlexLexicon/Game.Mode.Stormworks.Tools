@@ -23,7 +23,9 @@ public class CopyGameFiles : ITuiOperation
     {
         IReadOnlyList<AddonXml> addons = await _addonService.GetAddonsAsync();
 
-        var tileFileNames = addons.Select(a => a.TileFileName);
+        IEnumerable<string> tileFileNames = addons
+            .Select(a => a.TileFileName)
+            .Where(tfn => !string.IsNullOrWhiteSpace(tfn));
 
         await _gameService.CopyTilesXmlToWorkingDirectoryAsync(tileFileNames);
     }

@@ -9,6 +9,7 @@ using System.Drawing;
 namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface IAddonImageService
 {
+    Task RenameSatelliteImagesAsync();
     /// <exception cref="FileNotFoundException"/>
     Task CropManualSatelliteImagesAsync();
 }
@@ -16,16 +17,54 @@ public class AddonImageService : IAddonImageService
 {
     private readonly ILogger<AddonImageService> _logger;
     private readonly IImageFactory _imageFactory;
+    private readonly IAddonService _addonService;
     private readonly IOptions<FilePathOptions> _filePathOptions;
+    private readonly IOptions<PackagingOptions> _packagingOptions;
 
     public AddonImageService(
-        ILogger<AddonImageService> logger,  
-        IImageFactory imageFactory, 
-        IOptions<FilePathOptions> filePathOptions)
+        ILogger<AddonImageService> logger,
+        IImageFactory imageFactory,
+        IAddonService addonService,
+        IOptions<FilePathOptions> filePathOptions,
+        IOptions<PackagingOptions> packagingOptions)
     {
         _logger = logger;
         _imageFactory = imageFactory;
+        _addonService = addonService;
         _filePathOptions = filePathOptions;
+        _packagingOptions = packagingOptions;
+    }
+
+    public async Task RenameSatelliteImagesAsync()
+    {
+        FilePathOptions filePathOptions = _filePathOptions.Value;
+        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
+
+        PackagingOptions packagingOptions = _packagingOptions.Value;
+        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SatelliteImageExtension);
+
+        var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
+        foreach (FileInfo file in directory.GetFiles())
+        {
+            if (file.Extension == packagingOptions.SatelliteImageExtension)
+            {
+                string addonDirectoryName = Path.GetFileNameWithoutExtension(file.Name);
+
+                AddonXml addon = await _addonService.GetAddonAsync(addonDirectoryName);
+
+                if (file.DirectoryName is null)
+                {
+                    throw new Exception($"The directory name for the addon file '{file.FullName}' was null");
+                }
+
+                string normalizedTileName = addon.TileName.ToLowerInvariant();
+
+                string newImageFilePath = Path.Combine(file.DirectoryName, $"{normalizedTileName}{packagingOptions.SatelliteImageExtension}");
+
+                _logger.LogInformation($"Renaming the file '{file.Name}' to '{normalizedTileName}'");
+                File.Move(file.FullName, newImageFilePath);
+            }
+        }
     }
 
     public async Task CropManualSatelliteImagesAsync()
@@ -33,17 +72,15 @@ public class AddonImageService : IAddonImageService
         FilePathOptions filePathOptions = _filePathOptions.Value;
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
 
-        if (!Directory.Exists(filePathOptions.WorkingDirectoryPath))
-        {
-            throw new Exception($"The working directory '{filePathOptions.WorkingDirectoryPath}' does not exist.");
-        }
+        PackagingOptions packagingOptions = _packagingOptions.Value;
+        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SatelliteImageExtension);
 
-        string[] filePaths = Directory.GetFiles(filePathOptions.WorkingDirectoryPath);
-        foreach (string filePath in filePaths)
+        var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
+        foreach (FileInfo file in directory.GetFiles())
         {
-            if (filePath.EndsWith(".png"))
+            if (file.Extension == packagingOptions.SatelliteImageExtension)
             {
-                await CropManualSatelliteImageAsync(filePath);
+                await CropManualSatelliteImageAsync(file.FullName);
             }
         }
     }

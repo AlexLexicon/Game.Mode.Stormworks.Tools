@@ -3,11 +3,13 @@ using Game.Mode.Stormworks.Tools.Swtpkg.Application.Options;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Validators;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Xml;
 
 namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface IAddonService
 {
     Task CopyToWorkingDirectoryAsync();
+    Task<AddonXml> GetAddonAsync(string addonDirectoryName);
     Task<IReadOnlyList<AddonXml>> GetAddonsAsync();
 }
 public class AddonService : IAddonService
@@ -26,12 +28,39 @@ public class AddonService : IAddonService
         _packagingOptions = packagingOptions;
     }
 
+    public Task<AddonXml> GetAddonAsync(string addonDirectoryName)
+    {
+        FilePathOptions filePathOptions = _filePathOptions.Value;
+        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
+
+        PackagingOptions packagingOptions = _packagingOptions.Value;
+        PackagingOptionsValidator.ThrowIfNull(packagingOptions.AddonXmlFileName);
+
+        var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
+        DirectoryInfo? subDirectory = directory
+            .GetDirectories()
+            .FirstOrDefault(d => d.Name == addonDirectoryName);
+
+        if (subDirectory is null)
+        {
+            throw new Exception($"There is no addon directory with the provided addon directory name '{addonDirectoryName}'");
+        }
+
+        FileInfo? file = subDirectory
+            .GetFiles()
+            .First(f => f.Name == packagingOptions.AddonXmlFileName);
+
+        AddonXml addonXml = ParseAddonXmlFile(file);
+
+        return Task.FromResult(addonXml);
+    }
+
     public Task CopyToWorkingDirectoryAsync()
     {
         FilePathOptions filePathOptions = _filePathOptions.Value;
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.CopySourceDirectoryPath);
-        
+
         if (!Directory.Exists(filePathOptions.WorkingDirectoryPath))
         {
             throw new Exception($"The working directory '{filePathOptions.WorkingDirectoryPath}' does not exist.");
@@ -82,14 +111,54 @@ public class AddonService : IAddonService
         }
     }
 
-    public async Task<IReadOnlyList<AddonXml>> GetAddonsAsync()
+    public Task<IReadOnlyList<AddonXml>> GetAddonsAsync()
     {
         FilePathOptions filePathOptions = _filePathOptions.Value;
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
 
-        var addonFiles = GetAddonFiles(filePathOptions.WorkingDirectoryPath);
+        _logger.LogInformation("Gathering addon files from '{workingDirectoryPath}'", filePathOptions.WorkingDirectoryPath);
+        IReadOnlyList<FileInfo> addonFiles = GetAddonFiles(filePathOptions.WorkingDirectoryPath);
 
-        return null;
+        var addons = new List<AddonXml>();
+        foreach (FileInfo addonFile in addonFiles)
+        {
+            var addonXml = ParseAddonXmlFile(addonFile);
+
+            addons.Add(addonXml);
+        }
+
+        return Task.FromResult<IReadOnlyList<AddonXml>>(addons);
+    }
+
+    private AddonXml ParseAddonXmlFile(FileInfo addonFile)
+    {
+        string addonFilePath = addonFile.FullName;
+        _logger.LogInformation("Loading the xml file '{addonFilePath}'", addonFilePath);
+
+        var playlist = new XmlDocument();
+        playlist.Load(addonFilePath);
+
+        XmlNodeList? nodeList = playlist.SelectNodes("playlist/locations/locations/l");
+        if (nodeList is not null)
+        {
+            foreach (XmlNode node in nodeList)
+            {
+                string? name = node.Attributes?["name"]?.Value;
+                string? path = node.Attributes?["tile"]?.Value;
+
+                string? tileFileName = Path.GetFileNameWithoutExtension(path);
+
+                _logger.LogInformation("Getting the addon xml data for the tile '{tileFileName}'", tileFileName);
+
+                return new AddonXml
+                {
+                    TileFileName = tileFileName ?? string.Empty,
+                    TileName = name ?? string.Empty,
+                };
+            }
+        }
+
+        throw new Exception($"Could not parse the addon file '{addonFile.FullName}'");
     }
 
     private IReadOnlyList<FileInfo> GetAddonFiles(string directory, List<FileInfo>? addonXmlFiles = null)

@@ -5,6 +5,7 @@ public static class PackagingPriority
     public const int CreatePackageMetaData = 1;
     public const int CopyManualFiles = 2;
     public const int CropSatelliteImages = 3;
+    public const int RenameSatelliteImages = 4;
     public const int CopyGameFiles = 4;
     public const int GenerateTileMetaData = 5;
     public const int GenerateTileCoreData = 6;
