@@ -10,7 +10,7 @@ using System.Text.Json;
 namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface IPackageDataService
 {
-    Task<PackageMetaData> CreateMetaDataAsync();
+    Task CreateMetaDataAsync();
     Task SetMetaDataStateAsync(PackageMetaDataState state);
 }
 public class PackageDataService : IPackageDataService
@@ -20,42 +20,50 @@ public class PackageDataService : IPackageDataService
     private readonly IOptions<PackageSettingsOptions> _packageSettingsOptions;
     private readonly IOptions<PackagingOptions> _packagingOptions;
     private readonly ITimeProvider _timeProvider;
+    private readonly IFileService _fileService;
+    private readonly IAuthorService _authorService;
+    private readonly IPackageSettingsService _packageSettingsService;
 
     public PackageDataService(
         ILogger<PackageDataService> logger,
         IOptions<FilePathOptions> filePathOptions,
         IOptions<PackageSettingsOptions> packageSettingsOptions,
         IOptions<PackagingOptions> packagingOptions,
-        ITimeProvider timeProvider)
+        ITimeProvider timeProvider,
+        IFileService fileService,
+        IAuthorService authorService,
+        IPackageSettingsService packageSettingsService)
     {
         _logger = logger;
         _filePathOptions = filePathOptions;
         _packageSettingsOptions = packageSettingsOptions;
         _packagingOptions = packagingOptions;
         _timeProvider = timeProvider;
+        _fileService = fileService;
+        _authorService = authorService;
+        _packageSettingsService = packageSettingsService;
     }
 
-    public async Task<PackageMetaData> CreateMetaDataAsync()
+    public async Task CreateMetaDataAsync()
     {
-        PackageSettingsOptions packageSettingsOptions = _packageSettingsOptions.Value;
-        PackageSettingsOptionsValidator.ThrowIfNull(packageSettingsOptions.Version);
+        var getAuthorTask = _packageSettingsService.GetAuthorAsync();
+        var getPackageVersionTask = _packageSettingsService.GetPackageVersionAsync();
+        var getGameVersionTask = _packageSettingsService.GetGameVersionAsync();
 
-        PackagingOptions packagingOptions = _packagingOptions.Value;
-        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SourceByName);
+        string author = await getAuthorTask;
+        string packageVersion = await getPackageVersionTask;
+        string gameVersion = await getGameVersionTask;
 
-        _logger.LogInformation("Retrieving the current Utc time.");
-        //todo use ITimeProvider
         DateTimeOffset createdDateTimeUtc = _timeProvider.UtcNow;
 
-        _logger.LogInformation("Creating the metadata.");
-        var metaData = new PackageMetaData
+        await _fileService.CreateJsonFileAsync(new PackageMetaData
         {
-            GameVersion = "?",
-            PackageVersion = packageSettingsOptions.Version,
+            GameVersion = gameVersion,
+            PackageVersion = packageVersion,
             CreateDateTimeUtc = createdDateTimeUtc,
-            CreatedBy = packagingOptions.SourceByName,
+            CreatedBy = author,
             ModifiedDateTimeUtc = createdDateTimeUtc,
-            ModifiedBy = packagingOptions.SourceByName,
+            ModifiedBy = author,
             State = new PackageMetaDataState
             {
                 HasGameFiles = false,
@@ -65,21 +73,7 @@ public class PackageDataService : IPackageDataService
                 HasTileWorkbenchData = false,
                 IsZipped = false,
             },
-        };
-
-        _logger.LogInformation("Serilazing the metadata.");
-        string metaDataFileText = JsonSerializer.Serialize(metaData, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-        });
-
-        _logger.LogInformation("Getting the file path.");
-        string filePath = GetFilePath();
-
-        _logger.LogInformation("Writing the meta data to the file '{filePath}'.", filePath);
-        await File.WriteAllTextAsync(filePath, metaDataFileText);
-
-        return metaData;
+        }, "swtpkg");
     }
 
     public async Task SetMetaDataStateAsync(PackageMetaDataState state)

@@ -16,6 +16,6 @@ public class CropSatelliteImages : ITuiOperation
 
     public async Task ExecuteAsync()
     {
-        await _addonImageService.CropManualSatelliteImagesAsync();
+        await _addonImageService.CropManualMapImagesAsync();
     }
 }

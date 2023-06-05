@@ -9,7 +9,7 @@ namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface IAddonService
 {
     Task CopyToWorkingDirectoryAsync();
-    Task<AddonXml> GetAddonAsync(string addonDirectoryName);
+    Task<AddonXml> GetAddonAsync(string addonSubFolderName);
     Task<IReadOnlyList<AddonXml>> GetAddonsAsync();
 }
 public class AddonService : IAddonService
@@ -28,7 +28,7 @@ public class AddonService : IAddonService
         _packagingOptions = packagingOptions;
     }
 
-    public Task<AddonXml> GetAddonAsync(string addonDirectoryName)
+    public Task<AddonXml> GetAddonAsync(string addonSubFolderName)
     {
         FilePathOptions filePathOptions = _filePathOptions.Value;
         FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
@@ -39,11 +39,11 @@ public class AddonService : IAddonService
         var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
         DirectoryInfo? subDirectory = directory
             .GetDirectories()
-            .FirstOrDefault(d => d.Name == addonDirectoryName);
+            .FirstOrDefault(d => d.Name == addonSubFolderName);
 
         if (subDirectory is null)
         {
-            throw new Exception($"There is no addon directory with the provided addon directory name '{addonDirectoryName}'");
+            throw new Exception($"There is no addon directory with the provided addon directory name '{addonSubFolderName}'");
         }
 
         FileInfo? file = subDirectory

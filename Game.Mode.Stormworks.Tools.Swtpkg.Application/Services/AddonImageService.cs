@@ -2,16 +2,18 @@
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Models;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Options;
 using Game.Mode.Stormworks.Tools.Swtpkg.Application.Validators;
+using Lexicom.DependencyInjection.Primitives;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Drawing;
 
 namespace Game.Mode.Stormworks.Tools.Swtpkg.Application.Services;
 public interface IAddonImageService
 {
-    Task RenameSatelliteImagesAsync();
+    Task RenameMapImagesAsync();
     /// <exception cref="FileNotFoundException"/>
-    Task CropManualSatelliteImagesAsync();
+    Task CropManualMapImagesAsync();
 }
 public class AddonImageService : IAddonImageService
 {
@@ -20,181 +22,137 @@ public class AddonImageService : IAddonImageService
     private readonly IAddonService _addonService;
     private readonly IOptions<FilePathOptions> _filePathOptions;
     private readonly IOptions<PackagingOptions> _packagingOptions;
+    private readonly IFileService _fileService;
+    private readonly ITimeProvider _timeProvider;
 
     public AddonImageService(
         ILogger<AddonImageService> logger,
         IImageFactory imageFactory,
         IAddonService addonService,
         IOptions<FilePathOptions> filePathOptions,
-        IOptions<PackagingOptions> packagingOptions)
+        IOptions<PackagingOptions> packagingOptions,
+        IFileService fileService,
+        ITimeProvider timeProvider)
     {
         _logger = logger;
         _imageFactory = imageFactory;
         _addonService = addonService;
         _filePathOptions = filePathOptions;
         _packagingOptions = packagingOptions;
+        _fileService = fileService;
+        _timeProvider = timeProvider;
     }
 
-    public async Task RenameSatelliteImagesAsync()
+    public async Task RenameMapImagesAsync()
     {
-        FilePathOptions filePathOptions = _filePathOptions.Value;
-        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
-
-        PackagingOptions packagingOptions = _packagingOptions.Value;
-        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SatelliteImageExtension);
-
-        var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
-        foreach (FileInfo file in directory.GetFiles())
+        IReadOnlyList<FileInfo> mapImageFiles = await _fileService.GetMapImageFilesAsync();
+        foreach (FileInfo file in mapImageFiles)
         {
-            if (file.Extension == packagingOptions.SatelliteImageExtension)
+            if (file.DirectoryName is null)
             {
-                string addonDirectoryName = Path.GetFileNameWithoutExtension(file.Name);
-
-                AddonXml addon = await _addonService.GetAddonAsync(addonDirectoryName);
-
-                if (file.DirectoryName is null)
-                {
-                    throw new Exception($"The directory name for the addon file '{file.FullName}' was null");
-                }
-
-                string normalizedTileName = addon.TileName.ToLowerInvariant();
-
-                string newImageFilePath = Path.Combine(file.DirectoryName, $"{normalizedTileName}{packagingOptions.SatelliteImageExtension}");
-
-                _logger.LogInformation($"Renaming the file '{file.Name}' to '{normalizedTileName}'");
-                File.Move(file.FullName, newImageFilePath);
+                throw new UnreachableException($"The file '{file.Name}' has a null directory name but this should never be possible since it must be located within the working directory.");
             }
+
+            string addonSubFolderName = Path.GetFileNameWithoutExtension(file.Name);
+
+            AddonXml addon = await _addonService.GetAddonAsync(addonSubFolderName);
+
+            string normalizedTileName = addon.TileName.ToLowerInvariant();
+
+            string newImageFilePath = Path.Combine(file.DirectoryName, $"{normalizedTileName}{packagingOptions.MapImageExtension}");
+
+            _logger.LogInformation($"Renaming the file '{file.Name}' to '{normalizedTileName}'");
+            File.Move(file.FullName, newImageFilePath);
         }
     }
 
-    public async Task CropManualSatelliteImagesAsync()
+    public async Task CropManualMapImagesAsync()
     {
-        FilePathOptions filePathOptions = _filePathOptions.Value;
-        FilePathOptionsValidator.ThrowIfNull(filePathOptions.WorkingDirectoryPath);
-
-        PackagingOptions packagingOptions = _packagingOptions.Value;
-        PackagingOptionsValidator.ThrowIfNull(packagingOptions.SatelliteImageExtension);
-
-        var directory = new DirectoryInfo(filePathOptions.WorkingDirectoryPath);
-        foreach (FileInfo file in directory.GetFiles())
+        IReadOnlyList<FileInfo> mapImageFiles = await _fileService.GetMapImageFilesAsync();
+        foreach (FileInfo file in mapImageFiles)
         {
-            if (file.Extension == packagingOptions.SatelliteImageExtension)
+            if (file.DirectoryName is null)
             {
-                await CropManualSatelliteImageAsync(file.FullName);
+                throw new UnreachableException($"The file '{file.Name}' has a null directory name but this should never be possible since it must be located within the working directory.");
             }
-        }
-    }
 
-    private async Task CropManualSatelliteImageAsync(string imageFilePath)
-    {
-        var fi = new FileInfo(imageFilePath);
+            string tempImageFilePath = Path.Combine(file.DirectoryName, $"{file.Name}.temp.{_timeProvider.UtcNow.Ticks}{file.Extension}");
 
-        if (!fi.Exists || fi.DirectoryName is null)
-        {
-            throw new FileNotFoundException(null, imageFilePath);
-        }
+            File.Copy(file.FullName, tempImageFilePath);
 
-        _logger.LogInformation("Creating temp image file to perform the cropping to.");
+            IImage tempImage = await _imageFactory.CreateImageAsync(tempImageFilePath);
 
-        string tempImageFilePath = Path.Combine(fi.DirectoryName, $"{fi.Name}.temp.{DateTime.Now.Ticks}{fi.Extension}");
-
-        _logger.LogInformation("Copying the contents of the image file to the temp file '{tempFilePath}'", tempImageFilePath);
-        //you cannot save a bitmap file path to itself
-        //so we will create and modify a temp copy of the bitmap
-        //and then save that temp to the original file path
-        File.Copy(imageFilePath, tempImageFilePath);
-
-        _logger.LogInformation("Creating image from file");
-        IImage tempImage = await _imageFactory.CreateImageAsync(tempImageFilePath);
-
-        Point? satelliteCropTopLeft = null;
-        Point? satelliteCropBottomRight = null;
-
-        _logger.LogInformation("Performing crop on image");
-        for (int y = 0; y < tempImage.Height; y++)
-        {
-            double progress = Math.Round((tempImage.Height - y) / (double)tempImage.Height, 2);
-            _logger.LogInformation("Progress: {progress}%", progress);
-            Color previousPixel = default;
-
-            int? satelliteCropStartedX = null;
-            bool firstBottomRightOfTheCurrentRow = false;
-            for (int x = 0; x < tempImage.Width; x++)
+            Point? satelliteCropTopLeft = null;
+            Point? satelliteCropBottomRight = null;
+            for (int y = 0; y < tempImage.Height; y++)
             {
-                var currentPixel = tempImage.GetPixel(x, y);
+                double progress = Math.Round((tempImage.Height - y) / (double)tempImage.Height, 2);
+                _logger.LogInformation("Progress: {progress}%", progress);
+                Color previousPixel = default;
 
-                bool isPreviousPixelMouseHover = IsManualSatelliteMouseHoverColor(previousPixel);
-                bool isCurrentPixelMouseHover = IsManualSatelliteMouseHoverColor(currentPixel);
-
-                if (isPreviousPixelMouseHover && !isCurrentPixelMouseHover)
+                int? satelliteCropStartedX = null;
+                bool firstBottomRightOfTheCurrentRow = false;
+                for (int x = 0; x < tempImage.Width; x++)
                 {
-                    satelliteCropStartedX = x;
-                }
+                    Color currentPixel = tempImage.GetPixel(x, y);
 
-                if (satelliteCropStartedX is not null && isCurrentPixelMouseHover)
-                {
-                    int staelliteCropRowLength = x - satelliteCropStartedX.Value;
-                    if (staelliteCropRowLength > 200)
+                    bool isPreviousPixelMouseHover = IsManualMapMouseHoverColor(previousPixel);
+                    bool isCurrentPixelMouseHover = IsManualMapMouseHoverColor(currentPixel);
+
+                    if (isPreviousPixelMouseHover && !isCurrentPixelMouseHover)
                     {
-                        satelliteCropTopLeft ??= new Point(satelliteCropStartedX.Value, y);
-                        if (!firstBottomRightOfTheCurrentRow && y < 450)
+                        satelliteCropStartedX = x;
+                    }
+
+                    if (satelliteCropStartedX is not null && isCurrentPixelMouseHover)
+                    {
+                        int staelliteCropRowLength = x - satelliteCropStartedX.Value;
+                        if (staelliteCropRowLength is > 200)
                         {
-                            satelliteCropBottomRight = new Point(x, y + 1);
-                            firstBottomRightOfTheCurrentRow = true;
+                            satelliteCropTopLeft ??= new Point(satelliteCropStartedX.Value, y);
+                            
+                            if (!firstBottomRightOfTheCurrentRow && y is < 450)
+                            {
+                                satelliteCropBottomRight = new Point(x, y + 1);
+                                firstBottomRightOfTheCurrentRow = true;
+                            }
+                        }
+                        else
+                        {
+                            satelliteCropStartedX = null;
                         }
                     }
-                    else
-                    {
-                        satelliteCropStartedX = null;
-                    }
+
+                    previousPixel = currentPixel;
                 }
-
-                previousPixel = currentPixel;
             }
-        }
 
-        if (satelliteCropTopLeft is not null && satelliteCropBottomRight is not null)
-        {
-            _logger.LogInformation("Cloning cropped image");
-            var replacementImage = tempImage.Clone(new Rectangle
+            if (satelliteCropTopLeft is not null && satelliteCropBottomRight is not null)
             {
-                X = satelliteCropTopLeft.Value.X,
-                Y = satelliteCropTopLeft.Value.Y,
-                Width = satelliteCropBottomRight.Value.X - satelliteCropTopLeft.Value.X,
-                Height = satelliteCropBottomRight.Value.Y - satelliteCropTopLeft.Value.Y,
-            }, tempImage.PixelFormat);
+                var croppedImageRect = new Rectangle
+                {
+                    X = satelliteCropTopLeft.Value.X,
+                    Y = satelliteCropTopLeft.Value.Y,
+                    Width = satelliteCropBottomRight.Value.X - satelliteCropTopLeft.Value.X,
+                    Height = satelliteCropBottomRight.Value.Y - satelliteCropTopLeft.Value.Y,
+                };
 
-            _logger.LogInformation("Saving cropped image to file '{filePath}'", imageFilePath);
-            replacementImage.Save(imageFilePath);
+                IImage croppedImage = tempImage.Clone(croppedImageRect, tempImage.PixelFormat);
 
-            _logger.LogInformation("Disposing of cropped image.");
-            replacementImage.Dispose();
+                croppedImage.Save(file.FullName);
+                croppedImage.Dispose();
+            }
+            
+            tempImage.Dispose();
+            File.Delete(tempImageFilePath);
         }
-
-        _logger.LogInformation("Disposing of original image.");
-        tempImage.Dispose();
-
-        _logger.LogInformation("Deleting the temp file '{tempFilePath}'", tempImageFilePath);
-        File.Delete(tempImageFilePath);
     }
 
-    private bool IsManualSatelliteMouseHoverColor(Color color)
+    private bool IsManualMapMouseHoverColor(Color color)
     {
-        if (color.R is < 63 or > 64)
-        {
-            return false;
-        }
-
-        if (color.G is < 143 or > 145)
-        {
-            return false;
-        }
-
-        if (color.B is < 177 or > 179)
-        {
-            return false;
-        }
-
-        return true;
+        return
+            color.R is >= 63 and <= 64 &&
+            color.G is >= 143 and <= 145 &&
+            color.B is >= 177 and <= 179;
     }
 }

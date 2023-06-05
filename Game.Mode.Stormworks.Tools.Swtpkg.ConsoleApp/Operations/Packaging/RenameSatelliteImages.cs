@@ -16,6 +16,6 @@ public class RenameSatelliteImages : ITuiOperation
 
     public async Task ExecuteAsync()
     {
-        await _addonImageService.RenameSatelliteImagesAsync();
+        await _addonImageService.RenameMapImagesAsync();
     }
 }
